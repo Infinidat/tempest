@@ -156,6 +156,15 @@ class BaseServerStableDeviceRescueTest(base.BaseV2ComputeTest):
         self.servers_client.unrescue_server(server_id)
         waiters.wait_for_server_status(
             self.servers_client, server_id, 'ACTIVE')
+        server_info = self.servers_client.show_server(server_id)['server']
+        created_volumes = server_info['os-extended-volumes:volumes_attached']
+        for created_volume in created_volumes:
+            if created_volume.get('delete_on_termination') is False:
+                self.addCleanup(self.volumes_client.delete_volume,
+                                created_volume['id'], cascade=True)
+        self.addCleanup(waiters.wait_for_server_termination,
+                        self.servers_client, server_id)
+        self.addCleanup(self.servers_client.delete_server, server_id)
 
 
 class ServerStableDeviceRescueTestIDE(BaseServerStableDeviceRescueTest):
